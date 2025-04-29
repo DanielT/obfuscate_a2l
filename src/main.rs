@@ -61,7 +61,10 @@ fn cleanup_file(elf_builder: &mut object::build::elf::Builder<'_>) {
             && !sec.name.starts_with(".shstrtab".as_bytes())
         {
             sec.delete = true;
-        }
+        } else if sec.name.starts_with(".debug_macinfo".as_bytes()) {
+            // remove the .debug_macinfo section - gimli currently can't rewrite it in an obfuscated way, so delete it
+            sec.delete = true;
+        } 
     }
     for sym in &mut elf_builder.symbols {
         sym.delete = true;

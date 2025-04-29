@@ -244,7 +244,10 @@ fn obfuscate_attribute_value(
         gimli::AttributeValue::LocationListsRef(_) => None,
         gimli::AttributeValue::DebugLocListsBase(_debug_loc_lists_base) => todo!(),
         gimli::AttributeValue::DebugLocListsIndex(_debug_loc_lists_index) => todo!(),
-        gimli::AttributeValue::DebugMacinfoRef(_debug_macinfo_offset) => todo!(),
+        gimli::AttributeValue::DebugMacinfoRef(_debug_macinfo_offset) => {
+            // gimli does not support this (yet?)
+            None
+        }
         gimli::AttributeValue::DebugMacroRef(_) => None,
         gimli::AttributeValue::RangeListsRef(_) => None,
         gimli::AttributeValue::DebugRngListsBase(_) => None,
