@@ -1,0 +1,16 @@
+[package]
+name = "obfuscate_a2l"
+version = "0.1.0"
+authors = ["Daniel Thaler <daniel@dthaler.de>"]
+edition = "2024"
+description = "obfuscate an a2l file and the matching elf file"
+repository = "https://github.com/DanielT/obfuscate_a2l"
+
+[dependencies]
+a2lfile = "3.0.0"
+cpp_demangle = "0.4.4"
+gimli = "0.31.1"
+indexmap = "2.9.0"
+memmap2 = "0.9.5"
+object = {version = "0.36.7", features = ["all"] }
+rand = "0.9.1"
