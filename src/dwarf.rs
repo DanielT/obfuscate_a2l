@@ -79,6 +79,7 @@ pub(crate) fn obfuscate_dwarf(
                     unit_offsets,
                     &debuginfo_offsets,
                     &mut obfuscated_strings,
+                    &input_dwarf,
                 );
             } else {
                 // error
@@ -129,6 +130,7 @@ fn obfuscate_unit(
     unit_offsets: &HashMap<usize, UnitEntryId>,
     debuginfo_offsets: &HashMap<usize, (UnitId, UnitEntryId)>,
     obfuscated_strings: &mut HashMap<String, String>,
+    input_dwarf: &Dwarf<EndianSlice<RunTimeEndian>>,
 ) {
     let mut entries_cursor = in_unit.entries(in_abbrevs);
     while let Ok(Some((_, entry))) = entries_cursor.next_dfs() {
@@ -146,6 +148,7 @@ fn obfuscate_unit(
                 unit_offsets,
                 debuginfo_offsets,
                 obfuscated_strings,
+                input_dwarf,
             ) {
                 output_entry.set(attr.name(), output_value);
             }
@@ -160,6 +163,7 @@ fn obfuscate_attribute_value(
     unit_offsets: &HashMap<usize, UnitEntryId>,
     debuginfo_offsets: &HashMap<usize, (UnitId, UnitEntryId)>,
     obfuscated_strings: &mut HashMap<String, String>,
+    input_dwarf: &Dwarf<EndianSlice<RunTimeEndian>>,
 ) -> Option<gimli::write::AttributeValue> {
     match value {
         gimli::AttributeValue::Addr(val) => Some(gimli::write::AttributeValue::Address(
@@ -246,7 +250,23 @@ fn obfuscate_attribute_value(
         gimli::AttributeValue::DebugRngListsBase(_) => None,
         gimli::AttributeValue::DebugRngListsIndex(_) => None,
         gimli::AttributeValue::DebugTypesRef(_debug_type_signature) => todo!(),
-        gimli::AttributeValue::DebugStrRef(_debug_str_offset) => todo!(),
+        gimli::AttributeValue::DebugStrRef(debug_str_offset) => {
+            let strval = input_dwarf.debug_str.get_str(debug_str_offset).ok()?;
+            let utf8string = strval.to_string().ok()?;
+            if let Some(obfuscated) = obfuscated_strings.get(utf8string) {
+                // if we already have an obfuscated string, use it
+                Some(gimli::write::AttributeValue::String(
+                    obfuscated.as_bytes().to_vec(),
+                ))
+            } else {
+                // otherwise, obfuscate the string and store it in the map
+                let obfuscated_name = obfuscate_name(utf8string);
+                obfuscated_strings.insert(utf8string.to_string(), obfuscated_name.clone());
+                Some(gimli::write::AttributeValue::String(
+                    obfuscated_name.as_bytes().to_vec(),
+                ))
+            }
+        }
         gimli::AttributeValue::DebugStrRefSup(_debug_str_offset) => todo!(),
         gimli::AttributeValue::DebugStrOffsetsBase(_debug_str_offsets_base) => todo!(),
         gimli::AttributeValue::DebugStrOffsetsIndex(_debug_str_offsets_index) => todo!(),
