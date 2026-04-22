@@ -6,10 +6,10 @@ type OptionalAttribute<'data> = Option<gimli::AttributeValue<SliceType<'data>>>;
 
 // try to get the attribute of the type attrtype for the DIE
 pub(crate) fn get_attr_value<'unit>(
-    entry: &DebuggingInformationEntry<'_, 'unit, SliceType, usize>,
+    entry: &'unit DebuggingInformationEntry<SliceType, usize>,
     attrtype: gimli::DwAt,
 ) -> OptionalAttribute<'unit> {
-    entry.attr_value(attrtype).unwrap_or(None)
+    entry.attr_value(attrtype)
 }
 
 // get a name as a String from a DW_AT_name attribute
@@ -290,7 +290,7 @@ pub(crate) fn get_specification_attribute<'data, 'abbrev, 'unit>(
     entry: &'data DebuggingInformationEntry<SliceType, usize>,
     unit: &'unit UnitHeader<EndianSlice<'data, RunTimeEndian>>,
     abbrev: &'abbrev gimli::Abbreviations,
-) -> Option<DebuggingInformationEntry<'abbrev, 'unit, EndianSlice<'data, RunTimeEndian>, usize>> {
+) -> Option<DebuggingInformationEntry<EndianSlice<'data, RunTimeEndian>, usize>> {
     let specification_attr = get_attr_value(entry, gimli::constants::DW_AT_specification)?;
     match specification_attr {
         gimli::AttributeValue::UnitRef(unitoffset) => {
@@ -314,7 +314,7 @@ pub(crate) fn get_abstract_origin_attribute<'data, 'abbrev, 'unit>(
     entry: &'data DebuggingInformationEntry<SliceType, usize>,
     unit: &'unit UnitHeader<EndianSlice<'data, RunTimeEndian>>,
     abbrev: &'abbrev gimli::Abbreviations,
-) -> Option<DebuggingInformationEntry<'abbrev, 'unit, EndianSlice<'data, RunTimeEndian>, usize>> {
+) -> Option<DebuggingInformationEntry<EndianSlice<'data, RunTimeEndian>, usize>> {
     let origin_attr = get_attr_value(entry, gimli::constants::DW_AT_abstract_origin)?;
     match origin_attr {
         gimli::AttributeValue::UnitRef(unitoffset) => {
@@ -370,7 +370,7 @@ fn evaluate_exprloc(
                 let (unit_header, abbrev) = &debug_data_reader.units[current_unit];
                 let address_size = unit_header.address_size();
                 let mut entries = unit_header.entries(abbrev);
-                let (_, entry) = entries.next_dfs().ok()??;
+                let entry = entries.next_dfs().ok()??;
                 let base = get_addr_base_attribute(entry)?;
                 println!("evaluate_exprloc / base: {base:?}");
                 let addr = debug_data_reader

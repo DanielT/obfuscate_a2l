@@ -198,7 +198,7 @@ impl DebugDataReader<'_> {
             // in functions are declared inside of DW_TAG_subprogram[/DW_TAG_lexical_block]*.
             // We can easily find all of them by using depth-first traversal of the tree
             let mut entries_cursor = unit.entries(abbreviations);
-            if let Ok(Some((_, entry))) = entries_cursor.next_dfs() {
+            if let Ok(Some(entry)) = entries_cursor.next_dfs() {
                 if entry.tag() == gimli::constants::DW_TAG_compile_unit
                     || entry.tag() == gimli::constants::DW_TAG_partial_unit
                 {
@@ -207,10 +207,9 @@ impl DebugDataReader<'_> {
                 }
             }
 
-            let mut depth = 0;
             let mut context: Vec<(gimli::DwTag, Option<String>)> = Vec::new();
-            while let Ok(Some((depth_delta, entry))) = entries_cursor.next_dfs() {
-                depth += depth_delta;
+            while let Ok(Some(entry)) = entries_cursor.next_dfs() {
+                let depth = entry.depth();
                 debug_assert!(depth >= 1);
                 context.truncate((depth - 1) as usize);
                 let tag = entry.tag();
@@ -336,7 +335,7 @@ fn demangle_cpp_varnames(input: &[&String]) -> HashMap<String, String> {
         if varname.starts_with("_Z") {
             if let Ok(sym) = cpp_demangle::Symbol::new(*varname) {
                 // exclude useless demangled names like "typeinfo for std::type_info" or "{vtable(std::type_info)}"
-                if let Ok(demangled) = sym.demangle(&demangle_opts) {
+                if let Ok(demangled) = sym.demangle_with_options(&demangle_opts) {
                     if !demangled.contains(' ') && !demangled.starts_with("{vtable") {
                         demangled_symbols.insert(demangled, (*varname).clone());
                     }
@@ -360,7 +359,7 @@ impl<'a> UnitList<'a> {
 
     fn get_unit(&self, itemoffset: usize) -> Option<usize> {
         for (idx, (unit, _)) in self.list.iter().enumerate() {
-            let unitoffset = unit.offset().as_debug_info_offset().unwrap().0;
+            let unitoffset = unit.offset().to_debug_info_offset(unit).unwrap().0;
             if unitoffset < itemoffset && unitoffset + unit.length_including_self() > itemoffset {
                 return Some(idx);
             }

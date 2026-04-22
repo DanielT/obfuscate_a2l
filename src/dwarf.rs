@@ -32,7 +32,7 @@ pub(crate) fn obfuscate_dwarf(
         let abbreviations = unit.abbreviations(&input_dwarf.debug_abbrev).unwrap();
         // The root of the tree inside of a unit is always a DW_TAG_compile_unit or DW_TAG_partial_unit.
         let mut entries_cursor = unit.entries(&abbreviations);
-        if let Ok(Some((_, entry))) = entries_cursor.next_dfs() {
+        if let Ok(Some(entry)) = entries_cursor.next_dfs() {
             if entry.tag() == gimli::constants::DW_TAG_compile_unit
                 || entry.tag() == gimli::constants::DW_TAG_partial_unit
             {
@@ -65,7 +65,7 @@ pub(crate) fn obfuscate_dwarf(
         let abbreviations = unit.abbreviations(&input_dwarf.debug_abbrev).unwrap();
         // The root of the tree inside of a unit is always a DW_TAG_compile_unit or DW_TAG_partial_unit.
         let mut entries_cursor = unit.entries(&abbreviations);
-        if let Ok(Some((_, entry))) = entries_cursor.next_dfs() {
+        if let Ok(Some(entry)) = entries_cursor.next_dfs() {
             if entry.tag() == gimli::constants::DW_TAG_compile_unit
                 || entry.tag() == gimli::constants::DW_TAG_partial_unit
             {
@@ -99,12 +99,11 @@ fn create_unit_structure(
     debuginfo_offsets: &mut HashMap<usize, (UnitId, UnitEntryId)>,
 ) -> HashMap<usize, UnitEntryId> {
     let mut parent_ids = vec![output_unit.root()];
-    let mut depth = 0;
     let mut unit_offsets = HashMap::<usize, UnitEntryId>::new();
 
     let mut entries_cursor = in_unit.entries(in_abbrevs);
-    while let Ok(Some((depth_delta, entry))) = entries_cursor.next_dfs() {
-        depth = (depth as isize + depth_delta) as usize;
+    while let Ok(Some(entry)) = entries_cursor.next_dfs() {
+        let depth = entry.depth() as usize;
         parent_ids.truncate(depth + 1);
 
         // create a new entry in the output unit
@@ -133,14 +132,13 @@ fn obfuscate_unit(
     input_dwarf: &Dwarf<EndianSlice<RunTimeEndian>>,
 ) {
     let mut entries_cursor = in_unit.entries(in_abbrevs);
-    while let Ok(Some((_, entry))) = entries_cursor.next_dfs() {
+    while let Ok(Some(entry)) = entries_cursor.next_dfs() {
         let id = unit_offsets.get(&entry.offset().0).unwrap();
         // get the entry in the output unit
         let output_entry = output_unit.get_mut(*id);
 
         // process attributes
-        let mut attrs_iter = entry.attrs();
-        while let Ok(Some(attr)) = attrs_iter.next() {
+        for attr in entry.attrs() {
             if let Some(output_value) = obfuscate_attribute_value(
                 &in_unit,
                 attr.name(),
@@ -176,6 +174,7 @@ fn obfuscate_attribute_value(
         gimli::AttributeValue::Data2(val) => Some(gimli::write::AttributeValue::Data2(val)),
         gimli::AttributeValue::Data4(val) => Some(gimli::write::AttributeValue::Data4(val)),
         gimli::AttributeValue::Data8(val) => Some(gimli::write::AttributeValue::Data8(val)),
+        gimli::AttributeValue::Data16(val) => Some(gimli::write::AttributeValue::Data16(val)),
         gimli::AttributeValue::Sdata(val) => Some(gimli::write::AttributeValue::Sdata(val)),
         gimli::AttributeValue::Udata(val) => Some(gimli::write::AttributeValue::Udata(val)),
         gimli::AttributeValue::Exprloc(expression) => {
@@ -229,7 +228,7 @@ fn obfuscate_attribute_value(
         }
         gimli::AttributeValue::DebugInfoRef(debug_info_offset) => {
             if let Some((unit_id, entry_id)) = debuginfo_offsets.get(&debug_info_offset.0) {
-                let reference = gimli::write::Reference::Entry(*unit_id, *entry_id);
+                let reference = gimli::write::DebugInfoRef::Entry(*unit_id, *entry_id);
                 Some(gimli::write::AttributeValue::DebugInfoRef(reference))
             } else {
                 println!(

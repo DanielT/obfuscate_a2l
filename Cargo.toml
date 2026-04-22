@@ -7,10 +7,10 @@ description = "obfuscate an a2l file and the matching elf file"
 repository = "https://github.com/DanielT/obfuscate_a2l"
 
 [dependencies]
-a2lfile = "3.0.0"
-cpp_demangle = "0.4.4"
-gimli = "0.31.1"
+a2lfile = "3.4.0"
+cpp_demangle = "0.5.1"
+gimli = "0.33.0"
 indexmap = "2.9.0"
 memmap2 = "0.9.5"
-object = {version = "0.36.7", features = ["all"] }
-rand = "0.9.1"
+object = {version = "0.39.1", features = ["all"] }
+rand = "0.10.1"
